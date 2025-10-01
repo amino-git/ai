@@ -1,0 +1,9 @@
+تعليمات لتدريب النموذج
+
+حاليا بما انه يعمل على streamliteنحن نحتاج الى
+فتح cmd
+كتابة الامر cd C:\Users\PC\Desktop\ArabicSentimentWeb
+ثم streamlit run test_streamlit.py
+الملف test_streamlit.py فيه الواجهات 
+
+الملف ai فيه نموذج التدريب
