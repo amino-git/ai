@@ -29,7 +29,9 @@ if os.path.exists("token.pkl"):
     creds = joblib.load("token.pkl")
 else:
     flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_JSON, SCOPES)
-    creds = flow.run_local_server(port=0)  # يفتح نافذة لتسجيل دخول Gmail
+    
+    # بدل run_local_server، نستخدم run_console
+    creds = flow.run_console()  # يعطيك رابط وتدخل الكود يدوياً
     joblib.dump(creds, "token.pkl")  # حفظ التوكن لاستخدامه لاحقًا
 
 drive_service = build('drive', 'v3', credentials=creds)
@@ -238,3 +240,4 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
+
