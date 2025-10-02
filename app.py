@@ -205,13 +205,12 @@ if st.session_state.logged_in:
                 joblib.dump(st.session_state.mlp, "mlp_model.pkl")
                 joblib.dump(st.session_state.vectorizer, "tfidf_vectorizer.pkl")
                 
-               try:
+try:
     upload_to_drive("mlp_model.pkl")
     upload_to_drive("tfidf_vectorizer.pkl")
 except Exception as e:
     st.error(f"حدث خطأ أثناء رفع الملفات: {e}")
-
-                st.success("✅ تم تحديث النموذج بالتغريدة ورفع الملفات إلى Google Drive")
+    st.success("✅ تم تحديث النموذج بالتغريدة ورفع الملفات إلى Google Drive")
 
 # ---------------------------
 # Footer
@@ -223,6 +222,5 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
-
 
 
