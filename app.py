@@ -10,59 +10,8 @@ from nltk.corpus import stopwords
 from nltk.stem.isri import ISRIStemmer
 import nltk
 
-# مكتبات Google Drive عبر OAuth
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-
 # تحميل stopwords للغة العربية
 nltk.download('stopwords', quiet=True)
-
-# ---------------------------
-# إعداد Google Drive (OAuth)
-# ---------------------------
-SCOPES = ['https://www.googleapis.com/auth/drive']
-CREDENTIALS_JSON = "credentials.json"  # ملف Client ID و Client Secret من Google Cloud
-
-# التحقق من وجود token سابق
-if os.path.exists("token.pkl"):
-    creds = joblib.load("token.pkl")
-else:
-    flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_JSON, SCOPES)
-    
-    # بدل run_local_server، نستخدم run_console
-    creds = flow.run_console()  # يعطيك رابط وتدخل الكود يدوياً
-    joblib.dump(creds, "token.pkl")  # حفظ التوكن لاستخدامه لاحقًا
-
-drive_service = build('drive', 'v3', credentials=creds)
-
-# معرف المجلد في Google Drive (ضعه إذا أردت حفظ الملفات في مجلد محدد)
-DRIVE_FOLDER_ID = "1mOXjtLO5q6lKgt8cCeVBlGVZdIhTOl7W"  # None يعني رفعها في My Drive مباشرة
-
-def upload_to_drive(local_file, drive_folder_id=DRIVE_FOLDER_ID):
-    try:
-        file_name = os.path.basename(local_file)
-        media = MediaFileUpload(local_file, resumable=True)
-
-        if drive_folder_id:
-            query = f"name='{file_name}' and '{drive_folder_id}' in parents and trashed=false"
-            result = drive_service.files().list(q=query, fields="files(id, name)").execute()
-            files = result.get('files', [])
-        else:
-            files = []
-
-        if files:
-            file_id = files[0]['id']
-            drive_service.files().update(fileId=file_id, media_body=media).execute()
-        else:
-            file_metadata = {"name": file_name}
-            if drive_folder_id:
-                file_metadata["parents"] = [drive_folder_id]
-            drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-
-        st.success(f"✅ تم رفع {file_name} بنجاح إلى Google Drive!")
-    except Exception as e:
-        st.error(f"❌ فشل رفع {local_file} إلى Google Drive:\n{e}")
 
 # ---------------------------
 # تهيئة الجلسة
@@ -77,7 +26,7 @@ if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
 # ---------------------------
-# تحميل النموذج إذا كان موجوداً
+# تحميل النموذج المدرب مسبقًا إذا كان موجود
 # ---------------------------
 if st.session_state.mlp is None or st.session_state.vectorizer is None:
     if os.path.exists("mlp_model.pkl") and os.path.exists("tfidf_vectorizer.pkl"):
@@ -96,13 +45,112 @@ def clean_text(text, lang="ar"):
     text = re.sub(r"@\w+", "", text)
     text = re.sub(r"#", "", text)
     text = re.sub(r"\d+", "", text)
-    text = re.sub(r"[^\w\s\u0600-\u06FF]", "", text)
+    text = re.sub(r"[^\w\s\u0600-\u06FF]", "", text)  # يسمح بالعربية والإنجليزية
     text = re.sub(r"\s+", " ", text).strip()
+    
     if lang == "ar":
         words = [stemmer.stem(w) for w in text.split() if w not in arabic_stopwords]
     else:
-        words = [w for w in text.split() if len(w) > 1]
+        words = [w for w in text.split() if len(w) > 1]  # الإنجليزية بدون stemmer
+    
     return " ".join(words)
+
+# ---------------------------
+# إعدادات الصفحة وشريط الوضع الليلي
+# ---------------------------
+st.set_page_config(page_title="Amily 📝", layout="centered", initial_sidebar_state="auto")
+
+with st.sidebar:
+    st.title("الإعدادات")
+    
+    # الوضع الليلي
+    st.session_state.dark_mode = st.checkbox("🌙 تفعيل الوضع الليلي", value=st.session_state.dark_mode)
+    
+    # متغير الحالة للزر
+    if "show_info" not in st.session_state:
+        st.session_state.show_info = False
+
+
+    # زر Toggle
+    if st.button("وصف المشروع", key="info_btn"):
+        st.session_state.show_info = not st.session_state.show_info
+
+    # عرض/إخفاء المعلومات
+    if st.session_state.show_info:
+        st.markdown(
+            """
+            <div style='font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif; font-size:14px; line-height:1.5; color:black;'>
+            <h3>📝 وصف المشروع</h3>
+Amily هو نظام لتصنيف التغريدات إلى **إيجابية وسلبية**، ويدعم كلاً من **اللغة العربية والإنجليزية**.  
+النظام يسمح للمستخدم بتحليل النصوص وتجربة التغريدات الجديدة مباشرة بعد التدريب، ويهدف لتسهيل تصنيف النصوص بسرعة ودقة، سواء لأغراض تعليمية أو تحليل بيانات وسائل التواصل الاجتماعي.<br>
+تم تصميم المشروع ليكون سهل الاستخدام، ويمكن لأي شخص بدون خبرة سابقة تجربة تصنيف التغريدات وفهم عمل نماذج الذكاء الاصطناعي على النصوص.
+
+<h3>⚙️ طريقة العمل</h3>
+- رفع ملفات CSV أو TSV تحتوي على التغريدات مع تصنيفها (pos/neg).<br>
+- تنظيف النصوص تلقائياً من الروابط، الرموز، الأرقام، الوسوم، واستبعاد الكلمات الشائعة.<br>
+- تدريب النموذج على البيانات المدخلة باستخدام <strong>MLPClassifier</strong> و <strong>TF-IDF Vectorizer</strong>.<br>
+- تجربة التغريدات الجديدة لمعرفة تصنيفها مباشرة.<br>
+- إمكانية تحديث النموذج من تغريدة واحدة لتعزيز دقة التصنيف بسرعة وسهولة.<br>
+
+<h3>📖 التعليمات</h3>
+1. اختر لغة الملف قبل التدريب لتجنب الأخطاء في تنظيف النصوص.<br>
+2. لا تستخدم ملفات فارغة أو نصوص غير صالحة، لتفادي أي مشاكل أثناء التدريب.<br>
+3. بعد إتمام التدريب، يمكن تجربة أي تغريدة جديدة مباشرة في واجهة المستخدم.<br>
+4. يفضل رفع ملفات بحجم متوسط لضمان سرعة التدريب وتحسين أداء النموذج.<br>
+5. النظام مخصص للأغراض التعليمية والتجريبية، ويتيح تعلم مهارات الذكاء الاصطناعي وتحليل النصوص عملياً.<br>
+
+<h3>👨‍💻 عن المطور</h3>
+المطور: أمين خالد الجبري<br>
+الوظيفة: طالب في جامعة الجزيرة، قسم تقنية المعلومات، المستوى الرابع<br>
+سنة التطوير: 2025<br>
+البريد الإلكتروني: <a href="mailto:amin.khaled.ali@gmail.com">amin.khaled.ali@gmail.com</a><br>
+واتساب: <a href="https://wa.me/967775941498" target="_blank">+967 775941498</a><br>
+ملاحظات: المشروع تم تطويره كجزء من دراسة تقنية المعلومات، ويهدف إلى التعلم العملي واكتساب مهارات الذكاء الاصطناعي وتحليل النصوص بشكل احترافي.
+وما زال قيد التدريب حيث وصلت دقته حاليا الى 78% فقط.
+            """, unsafe_allow_html=True
+        )
+
+# تحسين تصميم الزر
+st.markdown("""
+    <style>
+    .stButton>button {
+        background-color: #2a2a2a;  /* اللون الأساسي: أسود خفيف */
+        color: #ffffff;
+        border-radius: 8px;
+        padding: 0.5em 1em;
+        font-weight: bold;
+        width: 100%;
+        font-family: "Segoe UI",Tahoma,Geneva,Verdana,sans-serif;
+        transition: background-color 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-color: #1f1f1f;  /* عند التمرير: أسود أغمق */
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+
+
+# تطبيق الوضع الليلي
+if st.session_state.dark_mode:
+    st.markdown("""
+        <style>
+        body { background-color: #1e1e2e; color: #f5f5f5; }
+        .stButton>button { background-color: #2a2a40; color: #f5f5f5; border-radius:8px; padding:0.5em 1em; font-weight:bold; }
+        .stTextInput>div>div>input { background-color: #2a2a40; color: #f5f5f5; border-radius:5px; padding:0.5em; }
+        .stRadio>div>div { background-color: #2a2a40; color:#f5f5f5; border-radius:5px; padding:0.3em; }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <style>
+        body { background-color: #ffffff; color: #0a0a23; }
+        .stButton>button { background-color: #0a0a23; color: #ffffff; border-radius:8px; padding:0.5em 1em; font-weight:bold; }
+        .stTextInput>div>div>input { background-color: #f0f0f0; color: #0a0a23; border-radius:5px; padding:0.5em; }
+        .stRadio>div>div { background-color: #f0f0f0; color:#0a0a23; border-radius:5px; padding:0.3em; }
+        </style>
+    """, unsafe_allow_html=True)
 
 # ---------------------------
 # واجهة المستخدم
@@ -147,21 +195,24 @@ if not st.session_state.logged_in:
 # ---------------------------
 if st.session_state.logged_in:
     st.title("👨‍💼 واجهة المدير")
+    
     st.subheader("رفع ملفات التدريب CSV/TSV")
     file = st.file_uploader("ارفع ملف CSV أو TSV للتدريب", type=["csv","tsv"], key="train_file")
     file_lang = st.radio("اختر لغة الملف", ["Arabic","English"], key="file_lang")
-
+    
     if file:
         sep = "\t" if file.name.endswith(".tsv") else ","
         df = pd.read_csv(file, sep=sep, header=None, names=["label","text"])
         df = df.dropna(subset=["label","text"])
         st.success(f"✅ تم رفع الملف بنجاح: {file.name} ({len(df)} سطر)")
 
+        # تنظيف النصوص بحسب اللغة المختارة
         if file_lang == "Arabic":
             df = df[df['text'].str.contains(r'[\u0600-\u06FF]', na=False)]
         df["clean_text"] = df["text"].apply(lambda x: clean_text(x, lang="ar" if file_lang=="Arabic" else "en"))
         df = df[df["clean_text"].str.strip() != ""]
 
+        # توازن البيانات
         df_majority = df[df.label=="neg"]
         df_minority = df[df.label=="pos"]
         if len(df_minority) > 0 and len(df_majority) > 0:
@@ -180,19 +231,16 @@ if st.session_state.logged_in:
                     y_train = df_balanced["label"].map({"neg":0,"pos":1})
                     mlp = MLPClassifier(hidden_layer_sizes=(150,50), max_iter=50, random_state=42)
                     mlp.fit(X_train, y_train)
-
+                    
                     st.session_state.mlp = mlp
                     st.session_state.vectorizer = vectorizer
                     joblib.dump(mlp, "mlp_model.pkl")
                     joblib.dump(vectorizer, "tfidf_vectorizer.pkl")
                     
-                    # رفع الملفات إلى Google Drive
-                    upload_to_drive("mlp_model.pkl")
-                    upload_to_drive("tfidf_vectorizer.pkl")
-
-                    st.success("✅ تم التدريب ورفع الملفات إلى Google Drive!")
+                    st.success("✅ تم التدريب بنجاح!")
 
     st.markdown("---")
+
     st.subheader("تجربة التغريدات الجديدة")
     new_tweet = st.text_input("ادخل تغريدة للتصنيف", key="new_tweet_admin")
     new_lang = st.radio("اختر لغة التغريدة", ["Arabic","English"], key="new_lang_admin")
@@ -209,6 +257,7 @@ if st.session_state.logged_in:
             st.warning("⚠️ النموذج غير مدرب بعد")
 
     st.markdown("---")
+
     st.subheader("تدريب النموذج من تغريدة واحدة")
     tweet_to_train = st.text_input("ادخل تغريدة للتدريب", key="train_one_admin")
     y_label = st.radio("اختر التصنيف للتغريدة", ["pos","neg"], key="label_one_admin")
@@ -223,12 +272,7 @@ if st.session_state.logged_in:
                 st.session_state.mlp.partial_fit(X_new, y_new)
                 joblib.dump(st.session_state.mlp, "mlp_model.pkl")
                 joblib.dump(st.session_state.vectorizer, "tfidf_vectorizer.pkl")
-                
-                # رفع الملفات الجديدة إلى Google Drive
-                upload_to_drive("mlp_model.pkl")
-                upload_to_drive("tfidf_vectorizer.pkl")
-
-                st.success("✅ تم تحديث النموذج بالتغريدة ورفع الملفات إلى Google Drive")
+                st.success("✅ تم تحديث النموذج بالتغريدة")
 
 # ---------------------------
 # Footer
@@ -240,4 +284,3 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
-
