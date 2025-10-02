@@ -236,10 +236,10 @@ if st.session_state.logged_in:
                 st.error("⚠️ لا توجد نصوص صالحة للتدريب بعد التنظيف!")
             else:
                 with st.spinner("⏳ جاري التدريب..."):
-                    vectorizer = TfidfVectorizer(max_features=15000, ngram_range=(1,2))
+                    vectorizer = TfidfVectorizer(max_features=25000, ngram_range=(1,2))
                     X_train = vectorizer.fit_transform(df_balanced["clean_text"])
                     y_train = df_balanced["label"].map({"neg":0,"pos":1})
-                    mlp = MLPClassifier(hidden_layer_sizes=(150,50), max_iter=50, random_state=42)
+                    mlp = MLPClassifier(hidden_layer_sizes=(200,100), max_iter=100, random_state=42)
                     mlp.fit(X_train, y_train)
                     
                     st.session_state.mlp = mlp
@@ -294,5 +294,6 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
+
 
 
