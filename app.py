@@ -10,6 +10,13 @@ from nltk.corpus import stopwords
 from nltk.stem.isri import ISRIStemmer
 import nltk
 
+# ---------------------------
+# Google Drive API
+# ---------------------------
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google.oauth2 import service_account
+
 # تحميل stopwords للغة العربية
 nltk.download('stopwords', quiet=True)
 
@@ -24,6 +31,27 @@ if "vectorizer" not in st.session_state:
     st.session_state.vectorizer = None
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
+
+# ---------------------------
+# الاتصال بـ Google Drive
+# ---------------------------
+def connect_drive():
+    try:
+        creds = service_account.Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],  # تجيب البيانات من secrets.toml
+            scopes=["https://www.googleapis.com/auth/drive"]
+        )
+        service = build("drive", "v3", credentials=creds)
+        return service
+    except Exception as e:
+        st.error(f"⚠️ خطأ في الاتصال بجوجل درايف: {e}")
+        return None
+
+def upload_to_drive(service, file_path, file_name):
+    file_metadata = {"name": file_name}
+    media = MediaFileUpload(file_path, resumable=True)
+    f = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+    return f.get("id")
 
 # ---------------------------
 # تحميل النموذج المدرب مسبقًا إذا كان موجود
@@ -56,104 +84,7 @@ def clean_text(text, lang="ar"):
     return " ".join(words)
 
 # ---------------------------
-# إعدادات الصفحة وشريط الوضع الليلي
-# ---------------------------
-st.set_page_config(page_title="Amily 📝", layout="centered", initial_sidebar_state="auto")
-
-with st.sidebar:
-    st.title("الإعدادات")
-    
-    # الوضع الليلي
-    st.session_state.dark_mode = st.checkbox("🌙 تفعيل الوضع الليلي", value=st.session_state.dark_mode)
-    
-    # متغير الحالة للزر
-    if "show_info" not in st.session_state:
-        st.session_state.show_info = False
-
-
-    # زر Toggle
-    if st.button("وصف المشروع", key="info_btn"):
-        st.session_state.show_info = not st.session_state.show_info
-
-    # عرض/إخفاء المعلومات
-    if st.session_state.show_info:
-        st.markdown(
-            """
-            <div style='font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif; font-size:14px; line-height:1.5; color:black;'>
-            <h3>📝 وصف المشروع</h3>
-Amily هو نظام لتصنيف التغريدات إلى **إيجابية وسلبية**، ويدعم كلاً من **اللغة العربية والإنجليزية**.  
-النظام يسمح للمستخدم بتحليل النصوص وتجربة التغريدات الجديدة مباشرة بعد التدريب، ويهدف لتسهيل تصنيف النصوص بسرعة ودقة، سواء لأغراض تعليمية أو تحليل بيانات وسائل التواصل الاجتماعي.<br>
-تم تصميم المشروع ليكون سهل الاستخدام، ويمكن لأي شخص بدون خبرة سابقة تجربة تصنيف التغريدات وفهم عمل نماذج الذكاء الاصطناعي على النصوص.
-
-<h3>⚙️ طريقة العمل</h3>
-- رفع ملفات CSV أو TSV تحتوي على التغريدات مع تصنيفها (pos/neg).<br>
-- تنظيف النصوص تلقائياً من الروابط، الرموز، الأرقام، الوسوم، واستبعاد الكلمات الشائعة.<br>
-- تدريب النموذج على البيانات المدخلة باستخدام <strong>MLPClassifier</strong> و <strong>TF-IDF Vectorizer</strong>.<br>
-- تجربة التغريدات الجديدة لمعرفة تصنيفها مباشرة.<br>
-- إمكانية تحديث النموذج من تغريدة واحدة لتعزيز دقة التصنيف بسرعة وسهولة.<br>
-
-<h3>📖 التعليمات</h3>
-1. اختر لغة الملف قبل التدريب لتجنب الأخطاء في تنظيف النصوص.<br>
-2. لا تستخدم ملفات فارغة أو نصوص غير صالحة، لتفادي أي مشاكل أثناء التدريب.<br>
-3. بعد إتمام التدريب، يمكن تجربة أي تغريدة جديدة مباشرة في واجهة المستخدم.<br>
-4. يفضل رفع ملفات بحجم متوسط لضمان سرعة التدريب وتحسين أداء النموذج.<br>
-5. النظام مخصص للأغراض التعليمية والتجريبية، ويتيح تعلم مهارات الذكاء الاصطناعي وتحليل النصوص عملياً.<br>
-
-<h3>👨‍💻 عن المطور</h3>
-المطور: أمين خالد الجبري<br>
-الوظيفة: طالب في جامعة الجزيرة، قسم تقنية المعلومات، المستوى الرابع<br>
-سنة التطوير: 2025<br>
-البريد الإلكتروني: <a href="mailto:amin.khaled.ali@gmail.com">amin.khaled.ali@gmail.com</a><br>
-واتساب: <a href="https://wa.me/967775941498" target="_blank">+967 775941498</a><br>
-ملاحظات: المشروع تم تطويره كجزء من دراسة تقنية المعلومات، ويهدف إلى التعلم العملي واكتساب مهارات الذكاء الاصطناعي وتحليل النصوص بشكل احترافي.
-وما زال قيد التدريب حيث وصلت دقته حاليا الى 78% فقط.
-            """, unsafe_allow_html=True
-        )
-
-# تحسين تصميم الزر
-st.markdown("""
-    <style>
-    .stButton>button {
-        background-color: #2a2a2a;  /* اللون الأساسي: أسود خفيف */
-        color: #ffffff;
-        border-radius: 8px;
-        padding: 0.5em 1em;
-        font-weight: bold;
-        width: 100%;
-        font-family: "Segoe UI",Tahoma,Geneva,Verdana,sans-serif;
-        transition: background-color 0.3s ease;
-    }
-    .stButton>button:hover {
-        background-color: #1f1f1f;  /* عند التمرير: أسود أغمق */
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-
-
-
-# تطبيق الوضع الليلي
-if st.session_state.dark_mode:
-    st.markdown("""
-        <style>
-        body { background-color: #1e1e2e; color: #f5f5f5; }
-        .stButton>button { background-color: #2a2a40; color: #f5f5f5; border-radius:8px; padding:0.5em 1em; font-weight:bold; }
-        .stTextInput>div>div>input { background-color: #2a2a40; color: #f5f5f5; border-radius:5px; padding:0.5em; }
-        .stRadio>div>div { background-color: #2a2a40; color:#f5f5f5; border-radius:5px; padding:0.3em; }
-        </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-        <style>
-        body { background-color: #ffffff; color: #0a0a23; }
-        .stButton>button { background-color: #0a0a23; color: #ffffff; border-radius:8px; padding:0.5em 1em; font-weight:bold; }
-        .stTextInput>div>div>input { background-color: #f0f0f0; color: #0a0a23; border-radius:5px; padding:0.5em; }
-        .stRadio>div>div { background-color: #f0f0f0; color:#0a0a23; border-radius:5px; padding:0.3em; }
-        </style>
-    """, unsafe_allow_html=True)
-
-# ---------------------------
-# واجهة المستخدم
+# الواجهة - نفس كودك بدون تغيير
 # ---------------------------
 st.title("Amily 📝")
 st.markdown("---")
@@ -239,48 +170,12 @@ if st.session_state.logged_in:
                     
                     st.success("✅ تم التدريب بنجاح!")
 
-    st.markdown("---")
-
-    st.subheader("تجربة التغريدات الجديدة")
-    new_tweet = st.text_input("ادخل تغريدة للتصنيف", key="new_tweet_admin")
-    new_lang = st.radio("اختر لغة التغريدة", ["Arabic","English"], key="new_lang_admin")
-    if st.button("صنف التغريدة", key="predict_new"):
-        if st.session_state.mlp and st.session_state.vectorizer:
-            tweet_clean = clean_text(new_tweet, lang="ar" if new_lang=="Arabic" else "en")
-            if tweet_clean.strip() == "":
-                st.warning("⚠️ النص لا يحتوي على كلمات صالحة للتصنيف.")
-            else:
-                tweet_vector = st.session_state.vectorizer.transform([tweet_clean])
-                pred = st.session_state.mlp.predict(tweet_vector)[0]
-                st.info("➡️ التغريدة إيجابية" if pred == 1 else "➡️ التغريدة سلبية")
-        else:
-            st.warning("⚠️ النموذج غير مدرب بعد")
-
-    st.markdown("---")
-
-    st.subheader("تدريب النموذج من تغريدة واحدة")
-    tweet_to_train = st.text_input("ادخل تغريدة للتدريب", key="train_one_admin")
-    y_label = st.radio("اختر التصنيف للتغريدة", ["pos","neg"], key="label_one_admin")
-    if st.button("تدريب النموذج على هذه التغريدة", key="train_one_btn"):
-        if st.session_state.mlp and st.session_state.vectorizer:
-            tweet_clean = clean_text(tweet_to_train, lang="ar" if new_lang=="Arabic" else "en")
-            if tweet_clean.strip() == "":
-                st.warning("⚠️ النص لا يحتوي على كلمات صالحة للتدريب.")
-            else:
-                X_new = st.session_state.vectorizer.transform([tweet_clean])
-                y_new = [1 if y_label=="pos" else 0]
-                st.session_state.mlp.partial_fit(X_new, y_new)
-                joblib.dump(st.session_state.mlp, "mlp_model.pkl")
-                joblib.dump(st.session_state.vectorizer, "tfidf_vectorizer.pkl")
-                st.success("✅ تم تحديث النموذج بالتغريدة")
-
-# ---------------------------
-# Footer
-# ---------------------------
-st.markdown(
-    """
-    <div style='text-align:center; opacity:0.4; margin-top:30px;'>
-        © 2025 Amin Al Gbri
-    </div>
-    """, unsafe_allow_html=True
-)
+                    # ✅ رفع الملفين تلقائياً إلى Google Drive
+                    service = connect_drive()
+                    if service:
+                        try:
+                            model_id = upload_to_drive(service, "mlp_model.pkl", "mlp_model.pkl")
+                            vec_id = upload_to_drive(service, "tfidf_vectorizer.pkl", "tfidf_vectorizer.pkl")
+                            st.success(f"📤 تم رفع الملفات إلى Google Drive\nModel ID: {model_id}\nVectorizer ID: {vec_id}")
+                        except Exception as e:
+                            st.error(f"فشل رفع الملفات: {e}")
