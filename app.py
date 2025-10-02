@@ -27,23 +27,24 @@ credentials = service_account.Credentials.from_service_account_info(SERVICE_ACCO
 drive_service = build('drive', 'v3', credentials=credentials)
 
 # معرف المجلد في Google Drive
-DRIVE_FOLDER_ID = "1mOXjtLO5q6lKgt8cCeVBlGVZdIhTOl7W"
+DRIVE_FOLDER_ID = "1mOXjtLO5q6lKgt8cCeVBlGVZdIhTOl7W?hl"
 
 def upload_to_drive(local_file, drive_folder_id=DRIVE_FOLDER_ID):
-    file_name = os.path.basename(local_file)
-    media = MediaFileUpload(local_file, resumable=True)
-    # تحقق إذا كان الملف موجود مسبقاً لتحديثه
-    query = f"name='{file_name}' and '{drive_folder_id}' in parents and trashed=false"
-    result = drive_service.files().list(q=query, fields="files(id, name)").execute()
-    files = result.get('files', [])
-    if files:
-        # تحديث الملف
-        file_id = files[0]['id']
-        drive_service.files().update(fileId=file_id, media_body=media).execute()
-    else:
-        # رفع ملف جديد
-        file_metadata = {"name": file_name, "parents": [drive_folder_id]}
-        drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+    try:
+        file_name = os.path.basename(local_file)
+        media = MediaFileUpload(local_file, resumable=True)
+        query = f"name='{file_name}' and '{drive_folder_id}' in parents and trashed=false"
+        result = drive_service.files().list(q=query, fields="files(id, name)").execute()
+        files = result.get('files', [])
+        if files:
+            file_id = files[0]['id']
+            drive_service.files().update(fileId=file_id, media_body=media).execute()
+        else:
+            file_metadata = {"name": file_name, "parents": [drive_folder_id]}
+            drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+        st.success(f"✅ تم رفع {file_name} بنجاح إلى Google Drive!")
+    except Exception as e:
+        st.error(f"❌ فشل رفع {local_file} إلى Google Drive:\n{e}")
 
 # ---------------------------
 # تهيئة الجلسة
@@ -205,12 +206,11 @@ if st.session_state.logged_in:
                 joblib.dump(st.session_state.mlp, "mlp_model.pkl")
                 joblib.dump(st.session_state.vectorizer, "tfidf_vectorizer.pkl")
                 
-try:
-    upload_to_drive("mlp_model.pkl")
-    upload_to_drive("tfidf_vectorizer.pkl")
-except Exception as e:
-    st.error(f"حدث خطأ أثناء رفع الملفات: {e}")
-    st.success("✅ تم تحديث النموذج بالتغريدة ورفع الملفات إلى Google Drive")
+                # رفع الملفات الجديدة إلى Google Drive
+                upload_to_drive("mlp_model.pkl")
+                upload_to_drive("tfidf_vectorizer.pkl")
+
+                st.success("✅ تم تحديث النموذج بالتغريدة ورفع الملفات إلى Google Drive")
 
 # ---------------------------
 # Footer
@@ -222,5 +222,3 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
-
-
