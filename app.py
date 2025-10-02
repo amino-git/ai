@@ -347,22 +347,7 @@ if st.session_state.logged_in:
 
     st.markdown("---")
 
-    # st.subheader("تدريب النموذج من تغريدة واحدة")
-    # tweet_to_train = st.text_input("ادخل تغريدة للتدريب", key="train_one_admin")
-    # y_label = st.radio("اختر التصنيف للتغريدة", ["pos","neg"], key="label_one_admin")
-    # if st.button("تدريب النموذج على هذه التغريدة", key="train_one_btn"):
-    #     if st.session_state.mlp and st.session_state.vectorizer:
-    #         tweet_clean = clean_text(tweet_to_train, lang="ar" if new_lang=="Arabic" else "en")
-    #         if tweet_clean.strip() == "":
-    #             st.warning("⚠️ النص لا يحتوي على كلمات صالحة للتدريب.")
-    #         else:
-    #             X_new = st.session_state.vectorizer.transform([tweet_clean])
-    #             y_new = [1 if y_label=="pos" else 0]
-    #             st.session_state.mlp.partial_fit(X_new, y_new)
-    #             joblib.dump(st.session_state.mlp, "mlp_model.pkl")
-    #             joblib.dump(st.session_state.vectorizer, "tfidf_vectorizer.pkl")
-    #             st.success("✅ تم تحديث النموذج بالتغريدة")
-
+  
 # ---------------------------
 # Footer
 # ---------------------------
@@ -373,6 +358,7 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
+
 
 
 
