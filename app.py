@@ -10,8 +10,8 @@ from nltk.corpus import stopwords
 from nltk.stem.isri import ISRIStemmer
 import nltk
 
-# مكتبات Google Drive
-from google.oauth2 import service_account
+# مكتبات Google Drive عبر OAuth
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
@@ -19,29 +19,45 @@ from googleapiclient.http import MediaFileUpload
 nltk.download('stopwords', quiet=True)
 
 # ---------------------------
-# إعداد Google Drive
+# إعداد Google Drive (OAuth)
 # ---------------------------
 SCOPES = ['https://www.googleapis.com/auth/drive']
-SERVICE_ACCOUNT_INFO = st.secrets["gdrive_service_account"]  # الصق JSON هنا في Secrets باسم gdrive_service_account
-credentials = service_account.Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPES)
-drive_service = build('drive', 'v3', credentials=credentials)
+CREDENTIALS_JSON = "credentials.json"  # ملف Client ID و Client Secret من Google Cloud
 
-# معرف المجلد في Google Drive
-DRIVE_FOLDER_ID = "1mOXjtLO5q6lKgt8cCeVBlGVZdIhTOl7W"
+# التحقق من وجود token سابق
+if os.path.exists("token.pkl"):
+    creds = joblib.load("token.pkl")
+else:
+    flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_JSON, SCOPES)
+    creds = flow.run_local_server(port=0)  # يفتح نافذة لتسجيل دخول Gmail
+    joblib.dump(creds, "token.pkl")  # حفظ التوكن لاستخدامه لاحقًا
+
+drive_service = build('drive', 'v3', credentials=creds)
+
+# معرف المجلد في Google Drive (ضعه إذا أردت حفظ الملفات في مجلد محدد)
+DRIVE_FOLDER_ID = "1mOXjtLO5q6lKgt8cCeVBlGVZdIhTOl7W"  # None يعني رفعها في My Drive مباشرة
 
 def upload_to_drive(local_file, drive_folder_id=DRIVE_FOLDER_ID):
     try:
         file_name = os.path.basename(local_file)
         media = MediaFileUpload(local_file, resumable=True)
-        query = f"name='{file_name}' and '{drive_folder_id}' in parents and trashed=false"
-        result = drive_service.files().list(q=query, fields="files(id, name)").execute()
-        files = result.get('files', [])
+
+        if drive_folder_id:
+            query = f"name='{file_name}' and '{drive_folder_id}' in parents and trashed=false"
+            result = drive_service.files().list(q=query, fields="files(id, name)").execute()
+            files = result.get('files', [])
+        else:
+            files = []
+
         if files:
             file_id = files[0]['id']
             drive_service.files().update(fileId=file_id, media_body=media).execute()
         else:
-            file_metadata = {"name": file_name, "parents": [drive_folder_id]}
+            file_metadata = {"name": file_name}
+            if drive_folder_id:
+                file_metadata["parents"] = [drive_folder_id]
             drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+
         st.success(f"✅ تم رفع {file_name} بنجاح إلى Google Drive!")
     except Exception as e:
         st.error(f"❌ فشل رفع {local_file} إلى Google Drive:\n{e}")
@@ -222,4 +238,3 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
-
