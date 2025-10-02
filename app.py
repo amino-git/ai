@@ -351,13 +351,14 @@ if st.session_state.logged_in:
 # ---------------------------
 # Footer
 # ---------------------------
-st.markdown(
-    """
-    <div style='text-align:center; opacity:0.4; margin-top:30px;'>
-        © 2025 Amin Al Gbri
-    </div>
-    """, unsafe_allow_html=True
-)
+# st.markdown(
+#     """
+#     <div style='text-align:center; opacity:0.4; margin-top:30px;'>
+#         © 2025 Amin Al Gbri
+#     </div>
+#     """, unsafe_allow_html=True
+# )
+
 
 
 
