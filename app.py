@@ -27,7 +27,8 @@ credentials = service_account.Credentials.from_service_account_info(SERVICE_ACCO
 drive_service = build('drive', 'v3', credentials=credentials)
 
 # معرف المجلد في Google Drive
-DRIVE_FOLDER_ID = "https://drive.google.com/drive/folders/1mOXjtLO5q6lKgt8cCeVBlGVZdIhTOl7W?hl=ar"
+DRIVE_FOLDER_ID = "1mOXjtLO5q6lKgt8cCeVBlGVZdIhTOl7W
+"
 
 def upload_to_drive(local_file, drive_folder_id=DRIVE_FOLDER_ID):
     file_name = os.path.basename(local_file)
@@ -221,3 +222,4 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
+
