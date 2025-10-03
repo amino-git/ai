@@ -1,159 +1,135 @@
 import streamlit as st
+from pathlib import Path
 
-# Page config
-st.set_page_config(page_title="My CV", page_icon="💼", layout="wide")
+# ---------------- إعداد الصفحة ----------------
+st.set_page_config(
+    page_title="السيرة الذاتية - أمين خالد",
+    page_icon="💼",
+    layout="wide"
+)
 
-# ====== Custom CSS for Styling ======
-st.markdown("""
+# ---------------- الوضع الليلي والنهاري ----------------
+mode = st.radio("اختر الوضع:", ["🌞 نهاري", "🌙 ليلي"])
+
+if mode == "🌞 نهاري":
+    bg_color = "#ffffff"
+    text_color = "#000000"
+    card_color = "#f2f2f2"
+else:
+    bg_color = "#0e0e0e"
+    text_color = "#ffffff"
+    card_color = "#1a1a1a"
+
+st.markdown(
+    f"""
     <style>
-        body {
-            background-color: #f5f5f5;
-            color: #333333;
-            font-family: 'Arial', sans-serif;
-        }
-        .profile-pic {
+        body {{
+            background-color: {bg_color};
+            color: {text_color};
+        }}
+        .card {{
+            background-color: {card_color};
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+        }}
+        .profile-pic {{
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
             border-radius: 50%;
             width: 150px;
-            box-shadow: 0px 0px 15px rgba(0,0,0,0.3);
-        }
-        .header {
-            text-align: center;
-            padding: 20px;
-        }
-        .header h1 {
-            margin-bottom: 5px;
-        }
-        .social-icons a {
-            margin: 0 10px;
-            text-decoration: none;
+            border: 4px solid gray;
+        }}
+        .section-title {{
             font-size: 22px;
-        }
-        .card {
-            background-color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 10px;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-        }
-        .timeline {
-            border-left: 3px solid #00aaff;
-            padding-left: 20px;
-            margin-top: 20px;
-        }
-        .skill-card {
-            background-color: #333;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 10px;
-        }
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: {text_color};
+        }}
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-# ====== Header Section ======
-st.markdown("<div class='header'>", unsafe_allow_html=True)
-st.image("https://via.placeholder.com/150", caption="Ameen Khaled", use_container_width=False, output_format="PNG", width=150)
-st.markdown("<h1>John Robert Smith</h1>", unsafe_allow_html=True)
-st.markdown("Web Designer & Developer | UX/UI Expert", unsafe_allow_html=True)
+# ---------------- صورة شخصية ----------------
+st.image("https://i.ibb.co/8d4pFms/profile-pic.png", caption="أمين خالد", width=150)
+
+# ---------------- معلومات أساسية ----------------
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.markdown(f"""
+# 💼 السيرة الذاتية  
+**الاسم:** أمين خالد  
+**المسمى:** طالب تقنية معلومات 🎓 | مطور ويب 💻 | مهتم بالذكاء الاصطناعي 🤖  
+""", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Social Icons
+# ---------------- أقسام السيرة الذاتية ----------------
+# قسم الخبرات
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>📌 الخبرات العملية</div>", unsafe_allow_html=True)
 st.markdown("""
-<div class="social-icons" style="text-align:center;">
-    <a href="#">🌐</a>
-    <a href="#">💼</a>
-    <a href="#">🐦</a>
-    <a href="#">📷</a>
-    <a href="#">📧</a>
-</div>
-""", unsafe_allow_html=True)
+- 💻 تطوير مواقع ويب باستخدام **HTML, CSS, JS, PHP, MySQL**
+- 🤖 تصميم نماذج تعلم آلي باستخدام **Python, Scikit-learn, TensorFlow**
+- 🛠 إدارة قواعد بيانات MySQL و PostgreSQL
+- ☁️ استضافة مواقع على InfinityFree + ربط SSL
+""")
+st.markdown("</div>", unsafe_allow_html=True)
 
-# Buttons
-col1, col2 = st.columns(2)
-with col1:
-    st.link_button("📥 Download CV", "https://your-cv-link.com")
-with col2:
-    st.link_button("✉️ Contact Me", "mailto:yourmail@gmail.com")
+# قسم التعليم
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>🎓 التعليم</div>", unsafe_allow_html=True)
+st.markdown("""
+- بكالوريوس تقنية معلومات – جامعة صنعاء (2022 - 2026)
+- دورة تطوير ويب شاملة – Udemy
+- دورة الذكاء الاصطناعي – Coursera
+""")
+st.markdown("</div>", unsafe_allow_html=True)
 
-# ====== Experience Section ======
-st.markdown("## 📌 Experience")
-col1, col2 = st.columns(2)
+# قسم المهارات
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>🛠 المهارات</div>", unsafe_allow_html=True)
+st.markdown("""
+- 💡 التفكير النقدي وحل المشكلات  
+- 🌐 تطوير مواقع تفاعلية  
+- 🐍 برمجة بايثون  
+- 🎨 تصميم واجهات أنيقة بـ Bootstrap  
+- ⚡ السرعة في التعلم والتجربة  
+""")
+st.markdown("</div>", unsafe_allow_html=True)
 
-with col1:
-    st.markdown("<div class='card timeline'>", unsafe_allow_html=True)
-    st.subheader("Chief Project Manager")
-    st.write("Lorem Ipsum Technology - South Africa")
-    st.write("Jan 2012 - Dec 2015")
-    st.write("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius.")
-    st.markdown("</div>", unsafe_allow_html=True)
+# قسم المشاريع
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>🚀 المشاريع</div>", unsafe_allow_html=True)
+st.markdown("""
+- 📱 مشروع موقع "WorkAway Yemen" للتوظيف التعاوني  
+- 🤖 تطبيق لتحليل المشاعر باستخدام الذكاء الاصطناعي  
+- 🕹 لعبة مغامرات ثنائية الأبعاد باستخدام GDevelop  
+- 📦 مشروع تخرج "شحن" لتوصيل الأغراض بين المحافظات  
+""")
+st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown("<div class='card timeline'>", unsafe_allow_html=True)
-    st.subheader("Senior UX/UI Designer")
-    st.write("Lorem Ipsum Technology - USA")
-    st.write("2016 - 2019")
-    st.write("Vivamus luctus eros aliquet convallis ultricies.")
-    st.markdown("</div>", unsafe_allow_html=True)
+# قسم التواصل
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>📞 التواصل</div>", unsafe_allow_html=True)
+st.markdown("""
+- 📧 البريد: ameen@example.com  
+- 🔗 GitHub: [github.com/ameen](https://github.com/)  
+- 🔗 LinkedIn: [linkedin.com/in/ameen](https://linkedin.com)  
+""")
+st.markdown("</div>", unsafe_allow_html=True)
 
-with col2:
-    st.markdown("<div class='card timeline'>", unsafe_allow_html=True)
-    st.subheader("Frontend Developer")
-    st.write("Lorem Ipsum - Germany")
-    st.write("2019 - 2021")
-    st.write("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum.")
-    st.markdown("</div>", unsafe_allow_html=True)
+# ---------------- زر تحميل PDF ----------------
+cv_path = Path("CV_Ameen.pdf")
 
-    st.markdown("<div class='card timeline'>", unsafe_allow_html=True)
-    st.subheader("AI Engineer")
-    st.write("Tech Corp - UK")
-    st.write("2021 - Present")
-    st.write("Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia.")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ====== Skills Section ======
-st.markdown("## 🛠️ Skills")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("<div class='skill-card'>", unsafe_allow_html=True)
-    st.subheader("Professional")
-    st.write("UI/UX Design - 90%")
-    st.progress(0.9)
-    st.write("PHP Web Apps - 80%")
-    st.progress(0.8)
-    st.write("Android Dev - 70%")
-    st.progress(0.7)
-    st.write("Adobe Tools - 70%")
-    st.progress(0.7)
-    st.write("MS Office - 80%")
-    st.progress(0.8)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col2:
-    st.markdown("<div class='skill-card'>", unsafe_allow_html=True)
-    st.subheader("Personal")
-    st.write("Committed - 100%")
-    st.progress(1.0)
-    st.write("Leadership - 90%")
-    st.progress(0.9)
-    st.write("Punctual - 95%")
-    st.progress(0.95)
-    st.write("Communicative - 90%")
-    st.progress(0.9)
-    st.write("Analytical Skill - 80%")
-    st.progress(0.8)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col3:
-    st.markdown("<div class='skill-card'>", unsafe_allow_html=True)
-    st.subheader("Languages")
-    st.write("English - 100%")
-    st.progress(1.0)
-    st.write("Spanish - 90%")
-    st.progress(0.9)
-    st.write("French - 80%")
-    st.progress(0.8)
-    st.write("Arabic - 70%")
-    st.progress(0.7)
-    st.write("Hindi - 60%")
-    st.progress(0.6)
-    st.markdown("</div>", unsafe_allow_html=True)
+if cv_path.exists():
+    with open(cv_path, "rb") as pdf_file:
+        st.download_button(
+            label="📑 تحميل السيرة الذاتية PDF",
+            data=pdf_file,
+            file_name="CV_Ameen.pdf",
+            mime="application/pdf"
+        )
+else:
+    st.warning("⚠️ ملف PDF غير موجود حالياً. الرجاء إنشاؤه يدوياً.")
