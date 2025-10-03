@@ -1,135 +1,111 @@
 import streamlit as st
-from pathlib import Path
+import numpy as np
+from PIL import Image, ImageDraw
+import time
 
-# ---------------- إعداد الصفحة ----------------
-st.set_page_config(
-    page_title="السيرة الذاتية - أمين خالد",
-    page_icon="💼",
-    layout="wide"
-)
+st.set_page_config(page_title="Snake Game", page_icon="🐍", layout="centered")
 
-# ---------------- الوضع الليلي والنهاري ----------------
-mode = st.radio("اختر الوضع:", ["🌞 نهاري", "🌙 ليلي"])
+# ---------- إعدادات اللعبة ----------
+GRID_SIZE = 20  # حجم كل خلية
+CELL_COUNT = 20  # عدد الخلايا أفقياً وعمودياً
 
-if mode == "🌞 نهاري":
-    bg_color = "#ffffff"
-    text_color = "#000000"
-    card_color = "#f2f2f2"
+# ---------- إدارة الحالة ----------
+if 'snake' not in st.session_state:
+    st.session_state.snake = [(10, 10)]
+if 'direction' not in st.session_state:
+    st.session_state.direction = 'RIGHT'
+if 'food' not in st.session_state:
+    st.session_state.food = (5, 5)
+if 'score' not in st.session_state:
+    st.session_state.score = 0
+if 'game_over' not in st.session_state:
+    st.session_state.game_over = False
+if 'speed' not in st.session_state:
+    st.session_state.speed = 0.3  # مدة التحديث بالثواني
+
+# ---------- وظائف اللعبة ----------
+def move_snake():
+    head_x, head_y = st.session_state.snake[-1]
+    if st.session_state.direction == 'UP':
+        head_y -= 1
+    elif st.session_state.direction == 'DOWN':
+        head_y += 1
+    elif st.session_state.direction == 'LEFT':
+        head_x -= 1
+    elif st.session_state.direction == 'RIGHT':
+        head_x += 1
+    new_head = (head_x, head_y)
+    
+    # تحقق من الاصطدام
+    if (head_x < 0 or head_x >= CELL_COUNT or head_y < 0 or head_y >= CELL_COUNT 
+        or new_head in st.session_state.snake):
+        st.session_state.game_over = True
+        return
+    st.session_state.snake.append(new_head)
+    
+    # تحقق من أكل الطعام
+    if new_head == st.session_state.food:
+        st.session_state.score += 1
+        st.session_state.food = spawn_food()
+        st.session_state.speed = max(0.05, st.session_state.speed - 0.01)  # زيادة السرعة
+    else:
+        st.session_state.snake.pop(0)
+
+def spawn_food():
+    while True:
+        pos = (np.random.randint(0, CELL_COUNT), np.random.randint(0, CELL_COUNT))
+        if pos not in st.session_state.snake:
+            return pos
+
+def draw_game():
+    img = Image.new('RGB', (GRID_SIZE*CELL_COUNT, GRID_SIZE*CELL_COUNT), color=(0,0,0))
+    draw = ImageDraw.Draw(img)
+    
+    # رسم الثعبان
+    for x, y in st.session_state.snake:
+        draw.rectangle([x*GRID_SIZE, y*GRID_SIZE, (x+1)*GRID_SIZE, (y+1)*GRID_SIZE], fill=(0,255,0))
+    
+    # رسم الطعام
+    fx, fy = st.session_state.food
+    draw.rectangle([fx*GRID_SIZE, fy*GRID_SIZE, (fx+1)*GRID_SIZE, (fy+1)*GRID_SIZE], fill=(255,0,0))
+    
+    return img
+
+# ---------- واجهة المستخدم ----------
+st.title("🐍 Snake Game - احترافي")
+
+st.subheader(f"Score: {st.session_state.score}")
+
+# أزرار التحكم
+col1, col2, col3 = st.columns(3)
+with col1:
+    if st.button("⬆️"):
+        st.session_state.direction = 'UP'
+with col2:
+    if st.button("⬅️"):
+        st.session_state.direction = 'LEFT'
+with col3:
+    if st.button("➡️"):
+        st.session_state.direction = 'RIGHT'
+if st.button("⬇️"):
+    st.session_state.direction = 'DOWN'
+
+# رسم اللعبة
+img = draw_game()
+st.image(img, use_column_width=True)
+
+# التحكم باللعبة
+if not st.session_state.game_over:
+    move_snake()
+    time.sleep(st.session_state.speed)
+    st.experimental_rerun()
 else:
-    bg_color = "#0e0e0e"
-    text_color = "#ffffff"
-    card_color = "#1a1a1a"
-
-st.markdown(
-    f"""
-    <style>
-        body {{
-            background-color: {bg_color};
-            color: {text_color};
-        }}
-        .card {{
-            background-color: {card_color};
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
-        }}
-        .profile-pic {{
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-            border-radius: 50%;
-            width: 150px;
-            border: 4px solid gray;
-        }}
-        .section-title {{
-            font-size: 22px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: {text_color};
-        }}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# ---------------- صورة شخصية ----------------
-st.image("https://i.ibb.co/8d4pFms/profile-pic.png", caption="أمين خالد", width=150)
-
-# ---------------- معلومات أساسية ----------------
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.markdown(f"""
-# 💼 السيرة الذاتية  
-**الاسم:** أمين خالد  
-**المسمى:** طالب تقنية معلومات 🎓 | مطور ويب 💻 | مهتم بالذكاء الاصطناعي 🤖  
-""", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
-
-# ---------------- أقسام السيرة الذاتية ----------------
-# قسم الخبرات
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.markdown("<div class='section-title'>📌 الخبرات العملية</div>", unsafe_allow_html=True)
-st.markdown("""
-- 💻 تطوير مواقع ويب باستخدام **HTML, CSS, JS, PHP, MySQL**
-- 🤖 تصميم نماذج تعلم آلي باستخدام **Python, Scikit-learn, TensorFlow**
-- 🛠 إدارة قواعد بيانات MySQL و PostgreSQL
-- ☁️ استضافة مواقع على InfinityFree + ربط SSL
-""")
-st.markdown("</div>", unsafe_allow_html=True)
-
-# قسم التعليم
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.markdown("<div class='section-title'>🎓 التعليم</div>", unsafe_allow_html=True)
-st.markdown("""
-- بكالوريوس تقنية معلومات – جامعة صنعاء (2022 - 2026)
-- دورة تطوير ويب شاملة – Udemy
-- دورة الذكاء الاصطناعي – Coursera
-""")
-st.markdown("</div>", unsafe_allow_html=True)
-
-# قسم المهارات
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.markdown("<div class='section-title'>🛠 المهارات</div>", unsafe_allow_html=True)
-st.markdown("""
-- 💡 التفكير النقدي وحل المشكلات  
-- 🌐 تطوير مواقع تفاعلية  
-- 🐍 برمجة بايثون  
-- 🎨 تصميم واجهات أنيقة بـ Bootstrap  
-- ⚡ السرعة في التعلم والتجربة  
-""")
-st.markdown("</div>", unsafe_allow_html=True)
-
-# قسم المشاريع
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.markdown("<div class='section-title'>🚀 المشاريع</div>", unsafe_allow_html=True)
-st.markdown("""
-- 📱 مشروع موقع "WorkAway Yemen" للتوظيف التعاوني  
-- 🤖 تطبيق لتحليل المشاعر باستخدام الذكاء الاصطناعي  
-- 🕹 لعبة مغامرات ثنائية الأبعاد باستخدام GDevelop  
-- 📦 مشروع تخرج "شحن" لتوصيل الأغراض بين المحافظات  
-""")
-st.markdown("</div>", unsafe_allow_html=True)
-
-# قسم التواصل
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.markdown("<div class='section-title'>📞 التواصل</div>", unsafe_allow_html=True)
-st.markdown("""
-- 📧 البريد: ameen@example.com  
-- 🔗 GitHub: [github.com/ameen](https://github.com/)  
-- 🔗 LinkedIn: [linkedin.com/in/ameen](https://linkedin.com)  
-""")
-st.markdown("</div>", unsafe_allow_html=True)
-
-# ---------------- زر تحميل PDF ----------------
-cv_path = Path("CV_Ameen.pdf")
-
-if cv_path.exists():
-    with open(cv_path, "rb") as pdf_file:
-        st.download_button(
-            label="📑 تحميل السيرة الذاتية PDF",
-            data=pdf_file,
-            file_name="CV_Ameen.pdf",
-            mime="application/pdf"
-        )
-else:
-    st.warning("⚠️ ملف PDF غير موجود حالياً. الرجاء إنشاؤه يدوياً.")
+    st.warning("💀 Game Over!")
+    if st.button("إعادة اللعب"):
+        st.session_state.snake = [(10, 10)]
+        st.session_state.direction = 'RIGHT'
+        st.session_state.food = (5, 5)
+        st.session_state.score = 0
+        st.session_state.game_over = False
+        st.session_state.speed = 0.3
+        st.experimental_rerun()
