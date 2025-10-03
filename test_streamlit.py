@@ -1,157 +1,121 @@
 import streamlit as st
-import pandas as pd
-import joblib
-import re
-import os
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.neural_network import MLPClassifier
-from sklearn.utils import resample
-from nltk.corpus import stopwords
-from nltk.stem.isri import ISRIStemmer
-import nltk
-nltk.download('stopwords', quiet=True)
+import base64
 
-# ---------------------------
-# تهيئة الجلسة
-# ---------------------------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "mlp" not in st.session_state:
-    st.session_state.mlp = None
-if "vectorizer" not in st.session_state:
-    st.session_state.vectorizer = None
+# إعداد الصفحة
+st.set_page_config(page_title="CV - أمين", page_icon="💼", layout="wide")
 
-# ---------------------------
-# تحميل النموذج المدرب مسبقًا إذا كان موجود
-# ---------------------------
-if st.session_state.mlp is None or st.session_state.vectorizer is None:
-    if os.path.exists("mlp_model.pkl") and os.path.exists("tfidf_vectorizer.pkl"):
-        st.session_state.mlp = joblib.load("mlp_model.pkl")
-        st.session_state.vectorizer = joblib.load("tfidf_vectorizer.pkl")
+# ======= الوضع الليلي / النهاري =======
+dark_mode = st.sidebar.radio("اختر الوضع:", ["🌞 نهاري", "🌙 ليلي"])
+if dark_mode == "🌙 ليلي":
+    bg_color = "#0f0f0f"
+    text_color = "#f5f5f5"
+    box_color = "#1e1e1e"
+else:
+    bg_color = "#f5f5f5"
+    text_color = "#0f0f0f"
+    box_color = "#ffffff"
 
-# ---------------------------
-# دالة تنظيف النصوص
-# ---------------------------
-stemmer = ISRIStemmer()
-arabic_stopwords = set(stopwords.words('arabic'))
+st.markdown(
+    f"""
+    <style>
+        body {{
+            background-color: {bg_color};
+            color: {text_color};
+        }}
+        .cv-box {{
+            background-color: {box_color};
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }}
+        .profile-pic {{
+            border-radius: 50%;
+            width: 180px;
+            margin-bottom: 20px;
+            box-shadow: 0px 0px 15px rgba(0,0,0,0.3);
+        }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-def clean_text(text):
-    text = str(text)
-    text = re.sub(r"http\S+|www.\S+", "", text)
-    text = re.sub(r"@\w+", "", text)
-    text = re.sub(r"#", "", text)
-    text = re.sub(r"[^\u0600-\u06FF\s]", "", text)
-    text = re.sub(r"\d+", "", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    words = [stemmer.stem(w) for w in text.split() if w not in arabic_stopwords]
-    return " ".join(words)
+# ======= الصورة الشخصية =======
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.image("https://via.placeholder.com/200", caption="أمين خالد", width=180, output_format="PNG", use_column_width=False)
 
-# ---------------------------
-# واجهة المستخدم العادي
-# ---------------------------
-st.title("📝 تصنيف التغريدات")
-st.subheader("واجهة المستخدم")
+# ======= الاسم والنبذة =======
+st.markdown(f"<h1 style='text-align:center; color:{text_color};'>💼 السيرة الذاتية</h1>", unsafe_allow_html=True)
+st.markdown(
+    f"""
+    <div style='text-align:center; font-size:18px; color:{text_color};'>
+    طالب تقنية معلومات 🎓 | مطور ويب 💻 | مهتم بالذكاء الاصطناعي 🤖
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-user_tweet = st.text_input("ادخل تغريدتك هنا")
-if st.button("صنف التغريدة (المستخدم)"):
-    if st.session_state.mlp and st.session_state.vectorizer:
-        tweet_clean = clean_text(user_tweet)
-        tweet_vector = st.session_state.vectorizer.transform([tweet_clean])
-        pred = st.session_state.mlp.predict(tweet_vector)[0]
-        st.info("➡️ التغريدة إيجابية" if pred == 1 else "➡️ التغريدة سلبية")
-    else:
-        st.warning("⚠️ النموذج غير مدرب بعد")
+# ======= تحميل PDF =======
+def get_binary_file_downloader(file_path, file_label):
+    with open(file_path, "rb") as file:
+        btn = st.download_button(
+            label=f"📥 {file_label}",
+            data=file,
+            file_name="CV_Ameen.pdf",
+            mime="application/pdf"
+        )
+    return btn
 
-st.markdown("---")
+st.markdown("### 📑 تحميل السيرة الذاتية")
+# ضع ملف CV_Ameen.pdf في مجلد المشروع
+get_binary_file_downloader("CV_Ameen.pdf", "تحميل ملف PDF")
 
-# ---------------------------
-# واجهة تسجيل الدخول للمدير
-# ---------------------------
-if not st.session_state.logged_in:
-    st.subheader("🔒 تسجيل الدخول للمدير")
-    username = st.text_input("اسم المستخدم")
-    password = st.text_input("كلمة المرور", type="password")
-    if st.button("دخول"):
-        if username == "admin" and password == "1234":
-            st.session_state.logged_in = True
-            st.success("تم تسجيل الدخول بنجاح!")
-        else:
-            st.error("اسم المستخدم أو كلمة المرور غير صحيحة")
+# ======= الأقسام =======
+st.markdown("### 👤 البيانات الشخصية")
+with st.container():
+    st.write("""
+    - 📍 اليمن  
+    - 📧 amin.khaled.ali@gmail.com  
+    - 📱 777-XXX-XXX  
+    - 🌐 [موقعي الشخصي](https://amin.kesug.com)
+    """)
 
-# ---------------------------
-# واجهة المدير
-# ---------------------------
-if st.session_state.logged_in:
-    st.title("👨‍💼 واجهة المدير")
+st.markdown("### 🎓 التعليم")
+st.write("- بكالوريوس تقنية معلومات – جامعة ... (2022 - حتى الآن)")
 
-    # --- رفع ملفات التدريب ---
-    st.subheader("رفع ملفات التدريب CSV/TSV")
-    file = st.file_uploader("ارفع ملف CSV أو TSV للتدريب", type=["csv", "tsv"])
-    
-    if file:
-        sep = "\t" if file.name.endswith(".tsv") else ","
-        df = pd.read_csv(file, sep=sep, header=None, names=["label", "text"])
-        st.success(f"✅ تم رفع الملف بنجاح: {file.name} ({len(df)} سطر)")
-        
-        df["clean_text"] = df["text"].apply(clean_text)
+st.markdown("### 💼 الخبرات")
+st.write("""
+- تطوير مواقع ويب (PHP, MySQL, Bootstrap).  
+- بناء نماذج ذكاء اصطناعي (ML, NLP).  
+- تصميم ألعاب بسيطة (GDevelop, Streamlit).  
+""")
 
-        df_majority = df[df.label=="neg"]
-        df_minority = df[df.label=="pos"]
-        if len(df_minority) > 0 and len(df_majority) > 0:
-            df_minority_upsampled = resample(df_minority, replace=True, n_samples=len(df_majority), random_state=42)
-            df_balanced = pd.concat([df_majority, df_minority_upsampled])
-        else:
-            df_balanced = df.copy()
+st.markdown("### 🛠️ المهارات")
+skills = {
+    "Python": 80,
+    "HTML / CSS": 90,
+    "JavaScript": 70,
+    "SQL": 75,
+    "Machine Learning": 65
+}
+for skill, level in skills.items():
+    st.progress(level / 100)
+    st.write(f"**{skill}** - {level}%")
 
-        if st.button("تدريب النموذج على الملف"):
-            with st.spinner("⏳ جاري التدريب..."):
-                vectorizer = TfidfVectorizer(max_features=15000, ngram_range=(1,2))
-                X_train = vectorizer.fit_transform(df_balanced["clean_text"])
-                y_train = df_balanced["label"].map({"neg":0,"pos":1})
-                mlp = MLPClassifier(hidden_layer_sizes=(150,50), max_iter=50, random_state=42)
-                mlp.fit(X_train, y_train)
-                
-                st.session_state.mlp = mlp
-                st.session_state.vectorizer = vectorizer
+st.markdown("### 📂 المشاريع")
+st.write("""
+- 🌐 [Workaway Clone](https://github.com/yourrepo) – موقع للتواصل بين العمال والمضيفين.  
+- 🤖 [مشروع ذكاء اصطناعي](https://github.com/yourrepo) – تصنيف النصوص والمشاعر.  
+- 🎮 [ألعاب Streamlit](https://yourgame.streamlit.app) – ألعاب تفاعلية مستضافة على Streamlit.  
+""")
 
-                # حفظ النموذج والـ vectorizer
-                joblib.dump(st.session_state.mlp, "mlp_model.pkl")
-                joblib.dump(st.session_state.vectorizer, "tfidf_vectorizer.pkl")
-
-                st.success("✅ تم التدريب بنجاح!")
-
-    st.markdown("---")
-
-    # --- تجربة التغريدات ---
-    st.subheader("تجربة النموذج بتغريدات جديدة")
-    new_tweet = st.text_input("ادخل تغريدة للتصنيف")
-    if st.button("صنف التغريدة"):
-        if st.session_state.mlp and st.session_state.vectorizer:
-            tweet_clean = clean_text(new_tweet)
-            tweet_vector = st.session_state.vectorizer.transform([tweet_clean])
-            pred = st.session_state.mlp.predict(tweet_vector)[0]
-            st.info("➡️ التغريدة إيجابية" if pred == 1 else "➡️ التغريدة سلبية")
-        else:
-            st.warning("⚠️ النموذج غير مدرب بعد")
-
-    st.markdown("---")
-
-    # --- تدريب من تغريدة واحدة ---
-    st.subheader("تدريب النموذج من تغريدة واحدة")
-    tweet_to_train = st.text_input("ادخل تغريدة للتدريب")
-    if tweet_to_train:
-        y_label = st.radio("اختر التصنيف للتغريدة", ["pos", "neg"])
-        if st.button("تدريب النموذج على هذه التغريدة"):
-            if st.session_state.mlp and st.session_state.vectorizer:
-                tweet_clean = clean_text(tweet_to_train)
-                X_new = st.session_state.vectorizer.transform([tweet_clean])
-                y_new = [1 if y_label=="pos" else 0]
-                st.session_state.mlp.partial_fit(X_new, y_new)
-
-                # حفظ النموذج والـ vectorizer بعد التدريب
-                joblib.dump(st.session_state.mlp, "mlp_model.pkl")
-                joblib.dump(st.session_state.vectorizer, "tfidf_vectorizer.pkl")
-
-                st.success("✅ تم تحديث النموذج بالتغريدة")
-            else:
-                st.warning("⚠️ النموذج غير مدرب بعد")
+# ======= روابط التواصل =======
+st.markdown("### 📞 للتواصل")
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.link_button("🌐 GitHub", "https://github.com/yourusername")
+with col2:
+    st.link_button("🔗 LinkedIn", "https://linkedin.com/in/yourusername")
+with col3:
+    st.link_button("✉️ Email", "mailto:amin.khaled.ali@gmail.com")
