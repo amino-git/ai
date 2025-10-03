@@ -4,10 +4,13 @@ from PIL import Image, ImageDraw
 import time
 
 st.set_page_config(page_title="Snake Game", page_icon="🐍", layout="centered")
+st.title("🐍 Snake Game - احترافي")
 
+# إعدادات اللعبة
 GRID_SIZE = 20
 CELL_COUNT = 20
 
+# ---------- إدارة الحالة ----------
 if 'snake' not in st.session_state:
     st.session_state.snake = [(10, 10)]
 if 'direction' not in st.session_state:
@@ -21,6 +24,7 @@ if 'game_over' not in st.session_state:
 if 'speed' not in st.session_state:
     st.session_state.speed = 0.3
 
+# ---------- وظائف اللعبة ----------
 def move_snake():
     head_x, head_y = st.session_state.snake[-1]
     if st.session_state.direction == 'UP':
@@ -32,13 +36,15 @@ def move_snake():
     elif st.session_state.direction == 'RIGHT':
         head_x += 1
     new_head = (head_x, head_y)
-    
+
+    # تحقق من الاصطدام
     if (head_x < 0 or head_x >= CELL_COUNT or head_y < 0 or head_y >= CELL_COUNT 
         or new_head in st.session_state.snake):
         st.session_state.game_over = True
         return
     st.session_state.snake.append(new_head)
-    
+
+    # تحقق من أكل الطعام
     if new_head == st.session_state.food:
         st.session_state.score += 1
         st.session_state.food = spawn_food()
@@ -61,7 +67,7 @@ def draw_game():
     draw.rectangle([fx*GRID_SIZE, fy*GRID_SIZE, (fx+1)*GRID_SIZE, (fy+1)*GRID_SIZE], fill=(255,0,0))
     return img
 
-st.title("🐍 Snake Game - احترافي")
+# ---------- واجهة المستخدم ----------
 st.subheader(f"Score: {st.session_state.score}")
 
 # أزرار التحكم
@@ -78,15 +84,15 @@ with col3:
 if st.button("⬇️"):
     st.session_state.direction = 'DOWN'
 
-img = draw_game()
-st.image(img, use_container_width=True)  # ✅ تم التحديث
+# زر تشغيل اللعبة خطوة خطوة
+if st.button("▶️ تحديث اللعبة"):
+    if not st.session_state.game_over:
+        move_snake()
 
-# تحديث اللعبة تلقائيًا فقط إذا اللعبة ليست منتهية
-if not st.session_state.game_over:
-    move_snake()
-    # لا تستخدم st.experimental_rerun() مباشرة
-    st.autorefresh(interval= int(st.session_state.speed*1000), key="refresh")
-else:
+img = draw_game()
+st.image(img, use_container_width=True)
+
+if st.session_state.game_over:
     st.warning("💀 Game Over!")
     if st.button("إعادة اللعب"):
         st.session_state.snake = [(10, 10)]
