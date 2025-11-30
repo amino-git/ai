@@ -13,7 +13,7 @@ from nltk.stem.isri import ISRIStemmer
 import nltk
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np # <-- إضافة للمصفوفات وإدارة التقدم
+import numpy as np
 
 # تحميل stopwords للغة العربية
 nltk.download('stopwords', quiet=True)
@@ -30,6 +30,8 @@ if "vectorizer" not in st.session_state:
     st.session_state.vectorizer = None
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
+if "classes_known" not in st.session_state:
+    st.session_state.classes_known = None
 
 # ---------------------------
 # تحميل النموذج المدرب مسبقًا إذا كان موجود
@@ -39,6 +41,7 @@ if st.session_state.mlp is None or st.session_state.vectorizer is None:
     if os.path.exists("mlp_model.pkl") and os.path.exists("tfidf_vectorizer.pkl"):
         st.session_state.mlp = joblib.load("mlp_model.pkl")
         st.session_state.vectorizer = joblib.load("tfidf_vectorizer.pkl")
+        st.session_state.classes_known = np.array([0, 1])
 
 # ---------------------------
 # دالة تنظيف النصوص
@@ -55,7 +58,38 @@ def clean_text(text, lang="ar"):
     else:
         text = re.sub(r"[^\w\s]", "", text) # إزالة الرموز للإنجليزية
     text = re.sub(r"\s+", " ", text).strip() # إزالة الفراغات الزائدة
-    return text 
+    return text
+
+# ---------------------------
+# دالة التدريب على تغريدة واحدة
+# ---------------------------
+
+def train_on_single_tweet(tweet, sentiment, lang, mlp, vectorizer):
+    """تدريب النموذج على تغريدة واحدة"""
+    try:
+        # تنظيف التغريدة
+        cleaned_tweet = clean_text(tweet, lang="ar" if lang=="Arabic" else "en")
+        
+        if cleaned_tweet.strip() == "":
+            return False, "⚠️ النص لا يحتوي على كلمات صالحة للتدريب."
+        
+        # تحويل التغريدة إلى متجه
+        tweet_vector = vectorizer.transform([cleaned_tweet])
+        
+        # تحويل التصنيف إلى رقم
+        sentiment_label = 1 if sentiment == "إيجابية" else 0
+        
+        # تعريف الفئات الممكنة إذا لم تكن معرفة مسبقاً
+        if st.session_state.classes_known is None:
+            st.session_state.classes_known = np.array([0, 1])
+        
+        # استخدام partial_fit مع تعريف الفئات
+        mlp.partial_fit(tweet_vector, [sentiment_label], classes=st.session_state.classes_known)
+        
+        return True, f"✅ تم تدريب النموذج بنجاح على التغريدة ({sentiment})"
+        
+    except Exception as e:
+        return False, f"❌ حدث خطأ أثناء التدريب: {str(e)}"
 
 # ---------------------------
 # إعدادات الصفحة وشريط الوضع الليلي
@@ -102,12 +136,6 @@ with st.sidebar:
                 <li>النظام مخصص للأغراض التعليمية والتجريبية، ويتيح تعلم مهارات الذكاء الاصطناعي وتحليل النصوص عمليًا.</li>
             </ol>
             
-            <h3>📌 ملاحظة هامة حول التدريب أونلاين</h3>
-            <p>أثناء تدريب النموذج على Streamlit Cloud، البيانات تُحفظ مؤقتًا، وعند تحديث الصفحة أو إعادة تشغيل التطبيق، يتم فقدان كل التدريب.</p>
-            <p>لقد حاولنا ربط التخزين مع Google Drive لحفظ النموذج والبيانات بشكل دائم، وتم تفعيل Google Cloud، لكن التخزين المشترك يحتاج إلى Google Workspace المدفوع.</p>
-            <p>كما حاولنا استخدام AWS S3، لكن مشكلة اختيار اسم Bucket فريد عالميًا جعلت الحل صعب التطبيق.</p>
-            <p>لذلك، Colab أو GitHub غير مناسبين للتدريب المباشر وحفظ البيانات بشكل دائم وآمن.</p>
-            
             <h3>👨‍💻 عن المطور</h3>
             <p>المطور: أمين خالد الجبري<br>
             الوظيفة: طالب في جامعة الجزيرة، قسم تقنية المعلومات، المستوى الرابع<br>
@@ -115,7 +143,7 @@ with st.sidebar:
             البريد الإلكتروني: <a href="mailto:amin.khaled.ali@gmail.com">amin.khaled.ali@gmail.com</a><br>
             واتساب: <a href="https://wa.me/967775941498" target="_blank">+967 775941498</a></p>
             
-            <p>ملاحظات: المشروع تم تطويره كجزء من دراسة تقنية المعلومات، ويهدف إلى التعلم العملي واكتساب مهارات الذكاء الاصطناعي وتحليل النصوص بشكل احترافي. النموذج الحالي وصل دقته إلى حوالي 78%.</p>
+            <p>ملاحظات: المشروع تم تطويره كجزء من دراسة تقنية المعلومات، ويهدف إلى التعلم العملي واكتساب مهارات الذكاء الاصطناعي وتحليل النصوص بشكل احترافي.</p>
             </div>
             """, unsafe_allow_html=True
         )
@@ -124,7 +152,7 @@ with st.sidebar:
     st.markdown("""
     <style>
     .stButton>button {
-        background-color: #2a2a2a; /* اللون الأساسي: أسود خفيف */
+        background-color: #2a2a2a;
         color: #ffffff;
         border-radius: 8px;
         padding: 0.5em 1em;
@@ -134,7 +162,7 @@ with st.sidebar:
         transition: background-color 0.3s ease;
     }
     .stButton>button:hover {
-        background-color: #1f1f1f; /* عند التمرير: أسود أغمق */
+        background-color: #1f1f1f;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -147,6 +175,7 @@ if st.session_state.dark_mode:
     .stButton>button { background-color: #2a2a40; color: #f5f5f5; border-radius:8px; padding:0.5em 1em; font-weight:bold; }
     .stTextInput>div>div>input { background-color: #2a2a40; color: #f5f5f5; border-radius:5px; padding:0.5em; }
     .stRadio>div>div { background-color: #2a2a40; color:#f5f5f5; border-radius:5px; padding:0.3em; }
+    .stTextArea>div>div>textarea { background-color: #2a2a40; color: #f5f5f5; }
     </style>
     """, unsafe_allow_html=True)
 else:
@@ -156,6 +185,7 @@ else:
     .stButton>button { background-color: #0a0a23; color: #ffffff; border-radius:8px; padding:0.5em 1em; font-weight:bold; }
     .stTextInput>div>div>input { background-color: #f0f0f0; color: #0a0a23; border-radius:5px; padding:0.5em; }
     .stRadio>div>div { background-color: #f0f0f0; color:#0a0a23; border-radius:5px; padding:0.3em; }
+    .stTextArea>div>div>textarea { background-color: #f0f0f0; color: #0a0a23; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -219,40 +249,31 @@ if st.session_state.logged_in:
             st.warning("⚠️ يجب تدريب النموذج أولاً على ملف بيانات قبل التدريب على تغريدة واحدة")
         else:
             with st.spinner("⏳ جاري تحديث النموذج..."):
-                try:
-                    # تنظيف التغريدة
-                    cleaned_tweet = clean_text(single_tweet, lang="ar" if single_tweet_lang=="Arabic" else "en")
+                success, message = train_on_single_tweet(
+                    single_tweet, 
+                    tweet_sentiment, 
+                    single_tweet_lang,
+                    st.session_state.mlp,
+                    st.session_state.vectorizer
+                )
+                
+                if success:
+                    # حفظ النموذج المحدث
+                    joblib.dump(st.session_state.mlp, "mlp_model.pkl")
+                    st.success(message)
                     
-                    if cleaned_tweet.strip() == "":
-                        st.warning("⚠️ النص لا يحتوي على كلمات صالحة للتدريب.")
-                    else:
-                        # تحويل التغريدة إلى متجه
-                        tweet_vector = st.session_state.vectorizer.transform([cleaned_tweet])
-                        
-                        # تحويل التصنيف إلى رقم
-                        sentiment_label = 1 if tweet_sentiment == "إيجابية" else 0
-                        
-                        # تدريب النموذج على التغريدة الجديدة (تدريب إضافي)
-                        # نستخدم partial_fit للتدريب التدريجي
-                        st.session_state.mlp.partial_fit(tweet_vector, [sentiment_label])
-                        
-                        # حفظ النموذج المحدث
-                        joblib.dump(st.session_state.mlp, "mlp_model.pkl")
-                        
-                        st.success(f"✅ تم تدريب النموذج بنجاح على التغريدة ({tweet_sentiment})")
-                        
-                        # عرض التغريدة بعد التنظيف
-                        st.info(f"📝 التغريدة بعد التنظيف: {cleaned_tweet}")
-                        
-                except Exception as e:
-                    st.error(f"❌ حدث خطأ أثناء التدريب: {str(e)}")
+                    # عرض التغريدة بعد التنظيف
+                    cleaned_tweet = clean_text(single_tweet, lang="ar" if single_tweet_lang=="Arabic" else "en")
+                    st.info(f"📝 التغريدة بعد التنظيف: {cleaned_tweet}")
+                else:
+                    st.error(message)
     
     st.markdown("---")
     
     # ---------------------------
     # قسم رفع ملفات التدريب
     # ---------------------------
-    st.subheader("رفع ملفات التدريب CSV/TSV")
+    st.subheader("📁 رفع ملفات التدريب CSV/TSV")
     file = st.file_uploader("ارفع ملف CSV أو TSV للتدريب", type=["csv","tsv"], key="train_file")
     file_lang = st.radio("اختر لغة الملف", ["Arabic","English"], key="file_lang")
     
@@ -291,50 +312,41 @@ if st.session_state.logged_in:
                     # تقسيم بيانات للتقييم
                     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
                     
-                    # إعداد MLP مع warm_start للتكرار اليدوي
-                    mlp = MLPClassifier(hidden_layer_sizes=(200,100), max_iter=1, warm_start=True, random_state=42)
+                    # إعداد MLP
+                    mlp = MLPClassifier(hidden_layer_sizes=(200,100), max_iter=100, random_state=42)
                     
                     st.markdown("""
                     <style>
-                    /* تغيير لون شريط التقدم */
                     div.stProgress > div > div > div > div {
-                        background-color:green; /* لون أصفر غامق */
+                        background-color: green;
                     }
                     </style>
                     """, unsafe_allow_html=True)
                     
                     progress_bar = st.progress(0)
-                    n_epochs = 20 # عدد الدورات التدريبية
                     
-                    for epoch in range(n_epochs):
-                        mlp.fit(X_train, y_train)
-                        progress_bar.progress((epoch+1)/n_epochs)
+                    # تدريب النموذج
+                    mlp.fit(X_train, y_train)
+                    progress_bar.progress(100)
                     
-                    # حفظ النموذج
+                    # حفظ النموذج وتعريف الفئات
                     st.session_state.mlp = mlp
                     st.session_state.vectorizer = vectorizer
+                    st.session_state.classes_known = np.unique(y)
+                    
                     joblib.dump(mlp, "mlp_model.pkl")
                     joblib.dump(vectorizer, "tfidf_vectorizer.pkl")
                     st.success("✅ تم التدريب بنجاح!")
                     
-                    # ---------------------------
                     # تقييم النموذج
                     y_pred = mlp.predict(X_test)
                     acc = accuracy_score(y_test, y_pred)
-                    prec = precision_score(y_test, y_pred)
-                    rec = recall_score(y_test, y_pred)
-                    f1 = f1_score(y_test, y_pred)
-                    cm = confusion_matrix(y_test, y_pred)
+                    prec = precision_score(y_test, y_pred, zero_division=0)
+                    rec = recall_score(y_test, y_pred, zero_division=0)
+                    f1 = f1_score(y_test, y_pred, zero_division=0)
                     
-                    report_dict = classification_report(
-                        y_test, y_pred, 
-                        target_names=["Negative","Positive"], 
-                        output_dict=True
-                    )
-                    
-                    # ---------------------------
-                    # جدول HTML واحد أنيق وصغير
-                    st.subheader("📊 Model Evaluation Summary")
+                    # عرض النتائج
+                    st.subheader("📊 نتائج التقييم")
                     st.markdown(f"""
                     <style>
                     .metrics-table {{
@@ -356,21 +368,12 @@ if st.session_state.logged_in:
                     .metrics-table tr:nth-child(even) {{
                         background-color: #f9f9f9;
                     }}
-                    .metrics-table tr:hover {{
-                        background-color: #ececec;
-                    }}
-                    .section-header {{
-                        background-color: #555;
-                        color: #fff;
-                        font-size: 13px;
-                    }}
                     </style>
                     <table class="metrics-table">
-                        <tr class="section-header"><th colspan="2">Overall Metrics</th></tr>
-                        <tr><td>Accuracy</td><td>{acc*100:.2f}%</td></tr>
-                        <tr><td>Precision</td><td>{prec*100:.2f}%</td></tr>
-                        <tr><td>Recall</td><td>{rec*100:.2f}%</td></tr>
-                        <tr><td>F1-score</td><td>{f1*100:.2f}%</td></tr>
+                        <tr><td>الدقة (Accuracy)</td><td>{acc*100:.2f}%</td></tr>
+                        <tr><td>الدقة (Precision)</td><td>{prec*100:.2f}%</td></tr>
+                        <tr><td>الاستدعاء (Recall)</td><td>{rec*100:.2f}%</td></tr>
+                        <tr><td>مقياس F1</td><td>{f1*100:.2f}%</td></tr>
                     </table>
                     """, unsafe_allow_html=True)
     
@@ -379,7 +382,7 @@ if st.session_state.logged_in:
     # ---------------------------
     # قسم تجربة التغريدات الجديدة
     # ---------------------------
-    st.subheader("تجربة التغريدات الجديدة")
+    st.subheader("🔍 تجربة التغريدات الجديدة")
     new_tweet = st.text_input("ادخل تغريدة للتصنيف", key="new_tweet_admin")
     new_lang = st.radio("اختر لغة التغريدة", ["Arabic","English"], key="new_lang_admin")
     
@@ -391,7 +394,8 @@ if st.session_state.logged_in:
             else:
                 tweet_vector = st.session_state.vectorizer.transform([tweet_clean])
                 pred = st.session_state.mlp.predict(tweet_vector)[0]
-                st.info("➡️ التغريدة إيجابية" if pred == 1 else "➡️ التغريدة سلبية")
+                proba = st.session_state.mlp.predict_proba(tweet_vector)[0]
+                st.info(f"➡️ التغريدة إيجابية (الثقة: {proba[1]*100:.1f}%)" if pred == 1 else f"➡️ التغريدة سلبية (الثقة: {proba[0]*100:.1f}%)")
         else:
             st.warning("⚠️ النموذج غير مدرب بعد")
 
